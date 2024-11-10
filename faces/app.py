@@ -8,8 +8,12 @@ import shutil
 app = Flask(__name__)
 
 # Load the models
-<TODO>
-
+models = {}
+model_names = ["Extra_trees", "K-nn", "Linear_regression", "Ridge"]
+for model_name in model_names:
+    with open(f"{model_name}_model.pkl", "rb") as model_file:
+        models[model_name] = pickle.load(model_file)
+        print(f"Modelo {model_name} cargado correctamente.")
 
 def preprocess_image(image_path):
     """Preprocess the uploaded image for prediction."""
@@ -29,6 +33,15 @@ def create_image_from_prediction(upper_half, prediction):
     full_image_array = np.clip(full_image_array, 0, 255).astype('uint8')  # Ensure pixel values are valid
     return Image.fromarray(full_image_array.reshape(64, 64))  # Convert to PIL Image
 
+def scale_prediction(prediction, new_min=0, new_max=255):
+    """Escala los valores de la predicción al rango 0-255."""
+    # Encuentra el mínimo y máximo actuales de la predicción
+    pred_min = prediction.min()
+    pred_max = prediction.max()
+
+    # Escala lineal al rango [new_min, new_max]
+    scaled_prediction = (prediction - pred_min) / (pred_max - pred_min) * (new_max - new_min) + new_min
+    return scaled_prediction
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
@@ -59,8 +72,10 @@ def upload_file():
             # Make predictions and generate output images
             output_images = {}
             for name, model in models.items():
-                prediction = <TODO>
+                prediction = model.predict([upper_half])[0]
+                prediction = scale_prediction(prediction)
                 print(f"{name} prediction: {prediction}", flush=True)  # Debugging line
+                print(f"{name} prediction min: {prediction.min()}, max: {prediction.max()}", flush=True)
 
                 output_images[name] = create_image_from_prediction(upper_half, prediction)
 
